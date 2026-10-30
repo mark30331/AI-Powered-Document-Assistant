@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PDF Knowledge Assistant</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: system-ui, sans-serif;
+            color: #172033;
+            background: #f3f6fb;
+        }
+        body {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 48px 20px;
+        }
+        h1, h2 { margin-top: 0; }
+        .card {
+            margin: 20px 0;
+            padding: 24px;
+            border: 1px solid #dce3ee;
+            border-radius: 12px;
+            background: white;
+        }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input[type="file"], input[type="text"] {
+            box-sizing: border-box;
+            width: 100%;
+            margin-bottom: 14px;
+            padding: 11px;
+            border: 1px solid #b9c4d4;
+            border-radius: 7px;
+        }
+        button {
+            padding: 10px 16px;
+            border: 0;
+            border-radius: 7px;
+            color: white;
+            background: #2857c5;
+            font: inherit;
+            cursor: pointer;
+        }
+        .muted, .meta { color: #5b6678; }
+        .messages { padding: 0; list-style: none; }
+        .messages li { margin: 10px 0; padding: 12px; border-radius: 7px; }
+        .success { background: #e5f6ea; }
+        .error { background: #ffebeb; }
+        .info { background: #e8f1ff; }
+        .answer { white-space: pre-wrap; line-height: 1.6; }
+        .document { padding: 8px 0; border-top: 1px solid #edf0f5; }
+        .document:first-child { border-top: 0; }
+        @media (max-width: 560px) {
+            body { padding: 24px 14px; }
+            .card { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>PDF Knowledge Assistant</h1>
+        <p class="muted">Upload text-based PDFs, then ask questions and get answers linked to their source pages.</p>
+    </header>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <main>
+        <section class="card" aria-labelledby="upload-heading">
+            <h2 id="upload-heading">1. Add a PDF</h2>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="upload">
+                <label for="pdf">PDF file (10 MB max, 100 pages max)</label>
+                <input id="pdf" name="pdf" type="file" accept="application/pdf,.pdf" required>
+                <button type="submit">Upload and index</button>
+            </form>
+            <p class="muted">Extracted text is stored in PostgreSQL and scoped to this browser session until you delete the PDF. Scanned PDFs need OCR. When you ask a question, relevant excerpts are sent to Google Gemini to generate the answer.</p>
+        </section>
+
+        <section class="card" aria-labelledby="question-heading">
+            <h2 id="question-heading">2. Ask your PDFs</h2>
+            {% if documents %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="ask">
+                    <label for="question">Your question</label>
+                    <input id="question" name="question" type="text" maxlength="1000" value="{{ question }}" placeholder="What are the main findings?" required>
+                    <button type="submit">Get an answer</button>
+                </form>
+            {% else %}
+                <p class="muted">Upload a PDF first to start asking questions.</p>
+            {% endif %}
+
+            {% if answer %}
+                <h3>Answer</h3>
+                <div class="answer">{{ answer }}</div>
+                {% if sources %}
+                    <h3>Sources</h3>
+                    <ul>
+                        {% for source in sources %}
+                            <li>{{ source.0 }}, page {{ source.1 }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endif %}
+        </section>
+
+        {% if documents %}
+            <section class="card" aria-labelledby="documents-heading">
+                <h2 id="documents-heading">Your PDFs</h2>
+                {% for document in documents %}
+                    <div class="document">
+                        <strong>{{ document.filename }}</strong>
+                        <div class="meta">Added {{ document.uploaded_at|date:"M j, Y H:i" }} UTC</div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="document_id" value="{{ document.pk }}">
+                            <button type="submit">Delete PDF</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

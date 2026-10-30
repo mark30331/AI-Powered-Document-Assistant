@@ -1,0 +1,12 @@
+django
+python-dotenv
+python-decouple
+google-genai
+langchain
+langchain-google-genai
+langgraph
+langgraph-checkpoint-postgres
+pgvector
+pypdf
+psycopg2-binary
+psycopg[binary]
